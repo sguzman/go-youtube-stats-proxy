@@ -3,7 +3,6 @@ package main
 import (
     "encoding/json"
     "fmt"
-    "google.golang.org/appengine"
     "io/ioutil"
     "net/http"
     "os"
@@ -40,10 +39,11 @@ type StatisticsType struct {
 
 func main() {
     http.HandleFunc("/", handle)
-    if os.Getenv("PORT") == "8888" {
-        panic(http.ListenAndServe(":8888", nil))
+    key, exists := os.LookupEnv("PORT")
+    if exists {
+        panic(http.ListenAndServe(key, nil))
     } else {
-        appengine.Main()
+        panic(http.ListenAndServe(":8888", nil))
     }
 }
 
@@ -53,11 +53,11 @@ func handle(w http.ResponseWriter, r *http.Request) {
     if len(split) == 3 {
         key := split[1]
         ids := split[2]
+        fmt.Println(key, len(ids))
 
         var url =
             fmt.Sprintf("https://www.googleapis.com/youtube/v3/channels?part=statistics&id=%s&key=%s", ids, key)
 
-        fmt.Println(split[0], split[1], split[2])
         resp, err1 := http.Get(url)
         if err1 != nil {
             panic(err1)
@@ -77,8 +77,6 @@ func handle(w http.ResponseWriter, r *http.Request) {
 
         body := make([]string, 0)
         for _, item := range data.Items {
-            fmt.Println(item.Id, item.Statistics.SubscriberCount, item.Statistics.ViewCount, item.Statistics.VideoCount)
-
             subs := fmt.Sprintf("subscribers{channel=\"%s\"} %s", item.Id, item.Statistics.SubscriberCount)
             views := fmt.Sprintf("views{channel=\"%s\"} %s", item.Id, item.Statistics.ViewCount)
             videos := fmt.Sprintf("videos{channel=\"%s\"} %s", item.Id, item.Statistics.VideoCount)
