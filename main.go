@@ -3,6 +3,7 @@ package main
 import (
     "encoding/json"
     "fmt"
+    "github.com/valyala/fasthttp"
     "io/ioutil"
     "net/http"
     "os"
@@ -38,17 +39,23 @@ type StatisticsType struct {
 }
 
 func main() {
-    http.HandleFunc("/", handle)
     key, exists := os.LookupEnv("PORT")
     if exists {
-        panic(http.ListenAndServe(key, nil))
+        port := ":" + key
+        err := fasthttp.ListenAndServe(port, handle)
+        if err != nil {
+            panic(err)
+        }
     } else {
-        panic(http.ListenAndServe(":8888", nil))
+        err := fasthttp.ListenAndServe(":8888", handle)
+        if err != nil {
+            panic(err)
+        }
     }
 }
 
-func handle(w http.ResponseWriter, r *http.Request) {
-    var path = r.URL.Path
+func handle(ctx *fasthttp.RequestCtx) {
+    var path = string(ctx.URI().Path())
     var split = strings.Split(path, "/")
     if len(split) == 3 {
         key := split[1]
@@ -87,7 +94,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
         }
 
         bodyStr := strings.Join(body, "\n")
-        count, err4 := fmt.Fprintln(w, bodyStr)
+        count, err4 := fmt.Fprintln(ctx, bodyStr)
         if err4 != nil {
             panic(err4)
         }
@@ -97,7 +104,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
         }
     } else {
         fmt.Print(path)
-        _, _ = fmt.Fprintln(w, "Hello, world!")
+        _, _ = fmt.Fprintln(ctx, "Hello, world!")
     }
 
 }
